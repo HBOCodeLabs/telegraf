@@ -15,35 +15,35 @@ import (
 var debugEnabled bool
 
 type AppDynamics struct {
-	ControllerHostname string
-	ControllerPort int
-	ControllerSslEnabled bool
-	AccountName string
-	AccountAccessKey string
-	ApplicationName string
-	TierName string
-	TierId int
-	NodeName string
-	Debug bool
-	MaxProcessSnapshotsPerPeriod int
+	ControllerHostname                     string
+	ControllerPort                         int
+	ControllerSslEnabled                   bool
+	AccountName                            string
+	AccountAccessKey                       string
+	ApplicationName                        string
+	TierName                               string
+	TierId                                 int
+	NodeName                               string
+	Debug                                  bool
+	MaxProcessSnapshotsPerPeriod           int
 	ProcessSnapshotCountResetPeriodSeconds int
-	AutoSnapshotDurationSeconds int
-	RoUser string
-	RoPassword string
-	ExcludeAgentFromCallGraph bool
-	MachineAgentHostname string
-	ReplaceAllDots bool
-	Timeout int
+	AutoSnapshotDurationSeconds            int
+	RoUser                                 string
+	RoPassword                             string
+	ExcludeAgentFromCallGraph              bool
+	MachineAgentHostname                   string
+	ReplaceAllDots                         bool
+	Timeout                                int
 
-	conn net.Conn
+	conn                 net.Conn
 	machineAgentEndpoint string
 }
 
 type Tier struct {
-	Id int `json:"id"`
-	Name string `json:"name"`
-	NumberOfNodes int `json:"numberOfNodes"`
-	AgentType string `json:"agentType"`
+	Id            int    `json:"id"`
+	Name          string `json:"name"`
+	NumberOfNodes int    `json:"numberOfNodes"`
+	AgentType     string `json:"agentType"`
 }
 
 func (a *AppDynamics) Description() string {
@@ -62,10 +62,10 @@ func (a *AppDynamics) SampleConfig() string {
 
 func (a *AppDynamics) Connect() error {
 	// Make a connection to the AppDynamics agent
-	if a.Timeout <=0 {
+	if a.Timeout <= 0 {
 		a.Timeout = 5
 	}
-	conn, err := net.DialTimeout("tcp", a.MachineAgentHostname, time.Duration(a.Timeout) * time.Second)
+	conn, err := net.DialTimeout("tcp", a.MachineAgentHostname, time.Duration(a.Timeout)*time.Second)
 	if err == nil {
 		a.conn = conn
 		return nil
@@ -81,7 +81,7 @@ func (a *AppDynamics) Close() error {
 }
 
 func (a *AppDynamics) Write(metrics []telegraf.Metric) error {
-	debug(fmt.Sprintf("writing metrics at %s", time.Now().UTC()))
+	debug(fmt.Sprintf("writing metrics at %s", time.Now().Unix()))
 	for _, metric := range metrics {
 		// write `pt` to the output sink here
 	}
