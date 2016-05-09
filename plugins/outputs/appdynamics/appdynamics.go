@@ -8,10 +8,11 @@ import (
 
 	"github.com/influxdata/telegraf"
 	"github.com/influxdata/telegraf/plugins/outputs"
+
 	"github.com/parnurzeal/gorequest"
 )
 
-var debug bool
+var debugEnabled bool
 
 type AppDynamics struct {
 	ControllerHostname string
@@ -31,9 +32,11 @@ type AppDynamics struct {
 	RoPassword string
 	ExcludeAgentFromCallGraph bool
 	MachineAgentHostname string
+	ReplaceAllDots bool
 	Timeout int
 
 	conn net.Conn
+	machineAgentEndpoint string
 }
 
 type Tier struct {
@@ -78,6 +81,7 @@ func (a *AppDynamics) Close() error {
 }
 
 func (a *AppDynamics) Write(metrics []telegraf.Metric) error {
+	debug(fmt.Sprintf("writing metrics at %s", time.Now().UTC()))
 	for _, metric := range metrics {
 		// write `pt` to the output sink here
 	}
@@ -86,12 +90,13 @@ func (a *AppDynamics) Write(metrics []telegraf.Metric) error {
 
 func init() {
 	appd := AppDynamics{}
-	debug = appd.Debug
+	debugEnabled = appd.Debug
+	debug(fmt.Sprintf("%+v", &appd))
 	outputs.Add("appdynamics", func() telegraf.Output { return &appd })
 }
 
-func logDebugMessage(msg string) {
-	if debug {
+func debug(msg string) {
+	if debugEnabled {
 		fmt.Println(msg)
 	}
 }
@@ -103,15 +108,21 @@ func (a *AppDynamics) getTierId() {
 		_, body, err := request.Get(fmt.Sprintf("%s:%d%s", a.ControllerHostname, a.ControllerPort, path)).End()
 		if err == nil {
 			var data []Tier
-			err := json.Unmarshal(body, data)
+			err := json.Unmarshal([]byte(body), &data)
 			if err == nil {
 				a.TierId = data[0].Id
-				logDebugMessage(fmt.Sprintf("TierId=%d", a.TierId))
+				debug(fmt.Sprintf("TierId=%d", a.TierId))
 			}
 		}
 	} else {
-		logDebugMessage(fmt.Sprintf("TierId=%d", a.TierId))
+		debug(fmt.Sprintf("TierId=%d", a.TierId))
 	}
+	a.machineAgentEndpoint = fmt.Sprintf(
+		"%s/machineagent/metrics?name=Server|Component:%s|Custom Metrics|",
+		a.MachineAgentHostname,
+		a.TierId,
+	)
+	debug(fmt.Sprintf("machineAgentEndpoint=%s", a.machineAgentEndpoint))
 }
 
 var nodeinfo = `
@@ -132,5 +143,12 @@ var nodeinfo = `
     "ropassword": "HBORocks2!",
     "serviceName": "accounts",
     "excludeAgentFromCallGraph": true
+}
+appdynamics: {
+	nodeinfoPath: '/tmp/nodeinfo.js',
+	debug: true,
+	retry: 20,
+	replaceAll: {{ replaceAllDots|lower }},
+	endpoint: 'http://localhost:8293'
 }
 `
